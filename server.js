@@ -21,7 +21,34 @@ let players = { red: null, blue: null, green: null, yellow: null };
 let spectators = new Set();
 let matchStarted = false;
 
-console.log("🚀 Authoritative Multi-Mode Collapse Server Initialized.");
+console.log("🚀 Resilient Lockstep Collapse Server Initialized.");
+
+function broadcast(payload) {
+    const message = JSON.stringify(payload);
+    Object.values(players).forEach(ws => {
+        if (ws && ws.readyState === WebSocket.OPEN) ws.send(message);
+    });
+    spectators.forEach(ws => {
+        if (ws && ws.readyState === WebSocket.OPEN) ws.send(message);
+    });
+}
+
+function checkLobbyStart() {
+    let currentActiveCount = 0;
+    roomConfig.activePlayerList.forEach(p => { if (players[p]) currentActiveCount++; });
+
+    if (currentActiveCount === roomConfig.maxPlayers) {
+        matchStarted = true;
+        console.log(`🎮 LOBBY READY: Booting online ${roomConfig.ruleMode.toUpperCase()} match.`);
+        broadcast({
+            type: 'start',
+            ruleMode: roomConfig.ruleMode,
+            rows: roomConfig.rows,
+            cols: roomConfig.cols,
+            activePlayers: roomConfig.activePlayerList
+        });
+    }
+}
 
 wss.on('connection', (ws) => {
     let assignedColor = null;
@@ -30,6 +57,7 @@ wss.on('connection', (ws) => {
         try {
             const data = JSON.parse(message);
 
+            // 1. Lobby Entry Control Block
             if (data.type === 'join_lobby') {
                 if (matchStarted) {
                     assignedColor = 'spectator';
@@ -60,10 +88,9 @@ wss.on('connection', (ws) => {
                     else if (data.ruleMode === '9x9') { roomConfig.rows = 9; roomConfig.cols = 9; }
                     else { roomConfig.rows = 5; roomConfig.cols = 5; }
 
-                    console.log(` LOBBY CREATED BY HOST. Mode: ${roomConfig.ruleMode.toUpperCase()} (${roomConfig.maxPlayers} Players Required)`);
+                    console.log(`Lobby configured by host. Rule Profile: ${roomConfig.ruleMode.toUpperCase()}`);
                 } else {
-                    const requiredSeats = roomConfig.activePlayerList;
-                    for (let seat of requiredSeats) {
+                    for (let seat of roomConfig.activePlayerList) {
                         if (!players[seat]) {
                             assignedColor = seat;
                             players[seat] = ws;
@@ -76,15 +103,20 @@ wss.on('connection', (ws) => {
                     }
                 }
 
-                console.log(`User registered successfully as: ${assignedColor.toUpperCase()}`);
                 ws.send(JSON.stringify({ type: 'init', color: assignedColor }));
+                checkLobbyStart();
+            }
 
-                let currentActiveCount = 0;
-                roomConfig.activePlayerList.forEach(p => { if (players[p]) currentActiveCount++; });
+            // 2. Lockstep Move Processing Node
+            if (data.type === 'move') {
+                if (assignedColor === 'spectator' || !matchStarted) return;
+                broadcast({ type: 'execute', r: data.r, c: data.c });
+            }
 
-                if (currentActiveCount === roomConfig.maxPlayers) {
-                    matchStarted = true;
-                    console.log(" All seats filled! Syncing board configurations...");
+            // 3. Persistent Instant Match Reset Handler
+            if (data.type === 'request_reset') {
+                if (assignedColor && assignedColor !== 'spectator') {
+                    console.log(`Match reset command initialized by ${assignedColor.toUpperCase()}`);
                     broadcast({
                         type: 'start',
                         ruleMode: roomConfig.ruleMode,
@@ -95,49 +127,26 @@ wss.on('connection', (ws) => {
                 }
             }
 
-            if (data.type === 'move') {
-                if (assignedColor === 'spectator' || !matchStarted) return;
-                broadcast({
-                    type: 'execute',
-                    r: data.r,
-                    c: data.c
-                });
-            }
-
         } catch (err) {
-            console.error("Failed to parse packet payload data:", err);
+            console.error("Failed to sequence network packet:", err);
         }
     });
 
     ws.on('close', () => {
-        console.log(`Connection to player slot ${assignedColor ? assignedColor.toUpperCase() : 'UNKNOWN'} severed.`);
         if (assignedColor && assignedColor !== 'spectator') {
+            console.log(`Seated player assignment ${assignedColor.toUpperCase()} dropped connection.`);
             players[assignedColor] = null;
-            if (matchStarted) {
-                matchStarted = false;
-                players = { red: null, blue: null, green: null, yellow: null };
-                spectators.clear();
-                console.log("Match disrupted. Lobby variables reset.");
-                broadcast({ type: 'reset' });
-            }
+            matchStarted = false;
+            
+            // Revert current players to lobby status without dropping their seat allocations
+            broadcast({ type: 'player_left', color: assignedColor });
         } else {
             spectators.delete(ws);
         }
     });
 });
 
-function broadcast(payload) {
-    const message = JSON.stringify(payload);
-    Object.values(players).forEach(client => {
-        if (client && client.readyState === WebSocket.OPEN) client.send(message);
-    });
-    spectators.forEach(client => {
-        if (client && client.readyState === WebSocket.OPEN) client.send(message);
-    });
-}
-
-// CRITICAL STEP: Bind dynamically to the cloud host's system port, fallback to 8080 locally
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {
-    console.log(`🎮 Collapse Engine Server active on port :${PORT}`);
+    console.log(`🎮 Collapse Master Control active on port :${PORT}`);
 });
