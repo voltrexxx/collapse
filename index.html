@@ -2,11 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Collapse</title>
     <link href="https://fonts.googleapis.com/css2?family=Badeen+Display&family=Rubik:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="icon" type="image/x-icon" href="favicon.png">
-    <link rel="manifest" href="manifest.json">
     <style>
         :root {
             --red: #ff3366;
@@ -33,17 +31,31 @@
             min-height: 100vh;
             margin: 0;
             user-select: none;
-            overflow-x: hidden;
+            overflow: hidden; /* Lock viewport scrolling entirely */
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: max-content;
+            height: max-content;
+            transition: transform 0.15s ease-out;
+            transform-origin: center center;
         }
 
         h1 {
             font-family: 'Badeen Display', sans-serif;
-            font-size: 6.5rem; 
-            margin: 0 0 5px 0;
+            font-size: 8.5rem; /* Massive authoritative branding typography */
+            margin: 0 0 35px 0; /* Clear padding zone decoupling logo from the scorebar */
             font-weight: normal;
             text-transform: uppercase;
             text-shadow: 0 0 15px rgba(255, 255, 255, 0.15);
-            transition: color 0.3s, text-shadow 0.3s;
+            text-align: center;
+            line-height: 0.9;
         }
 
         #network-status {
@@ -57,15 +69,13 @@
         }
 
         #scoreboard {
-            width: 423px; 
             height: 12px;
             display: flex;
             background: #222;
             border-radius: 6px;
             overflow: hidden;
-            margin-bottom: 20px;
+            margin-bottom: 20px; /* Separates tracker bar cleanly from the turn text */
             box-shadow: 0 0 10px rgba(0,0,0,0.5), inset 0 2px 4px rgba(0,0,0,0.5);
-            transition: width 0.3s ease;
         }
 
         .score-bar {
@@ -80,7 +90,7 @@
         #status-container {
             min-height: 40px;
             max-width: 600px;
-            margin-bottom: 15px;
+            margin-bottom: 30px; /* Cushion separating status information from game field */
             font-size: 1.1rem;
             text-align: center;
             display: flex;
@@ -96,49 +106,30 @@
         .yellow-text { color: var(--yellow); text-shadow: 0 0 8px var(--yellow); }
         .neutral-text { color: var(--neutral); text-shadow: 0 0 8px var(--neutral); }
 
+        /* Row Configuration Fixed Across All Devices */
         #game-wrapper {
-            position: relative;
             display: flex;
-            justify-content: center;
+            flex-direction: row; 
             align-items: center;
+            justify-content: center;
+            gap: 30px;
         }
 
-        #bot-panel {
-            position: absolute;
-            right: calc(100% + 30px); 
-            top: 50%;
-            transform: translateY(-50%);
+        #bot-panel, #mode-panel {
             background: var(--board-bg);
             padding: 20px;
             border-radius: 12px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            transition: opacity 0.5s, transform 0.5s;
             display: flex;
             flex-direction: column;
             gap: 10px;
-            width: max-content;
-        }
-
-        #mode-panel {
-            position: absolute;
-            left: calc(100% + 30px); 
-            top: 50%;
-            transform: translateY(-50%);
-            background: var(--board-bg);
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            transition: opacity 0.5s, transform 0.5s;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            width: max-content;
+            width: 170px;
+            box-sizing: border-box;
         }
 
         #bot-panel.hidden, #mode-panel.hidden {
             opacity: 0;
             pointer-events: none;
-            transform: translateY(-50%) scale(0.95);
         }
 
         .panel-title {
@@ -161,6 +152,9 @@
             cursor: pointer;
             transition: all 0.2s;
             text-align: left;
+            font-size: 0.85rem;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .mode-btn:hover { filter: brightness(1.2); }
@@ -181,6 +175,7 @@
             pointer-events: none;
         }
 
+        /* Restored Pristine Grid Layout Styles */
         .cell {
             background: var(--cell-bg);
             border-radius: 8px;
@@ -214,8 +209,11 @@
         .cell.turn-green { border-color: rgba(16, 185, 129, 0.6); box-shadow: inset 0 0 15px rgba(16, 185, 129, 0.2); }
         .cell.turn-yellow { border-color: rgba(250, 204, 21, 0.6); box-shadow: inset 0 0 15px rgba(250, 204, 21, 0.2); }
 
+        /* Restored Pristine Dot Aesthetics */
         .dot {
-            width: 16px; height: 16px; margin: 3px;
+            width: 16px; 
+            height: 16px; 
+            margin: 3px;
             border-radius: 50%;
             box-shadow: 0 2px 4px rgba(0,0,0,0.4);
             animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -254,53 +252,44 @@
         }
 
         .action-btn:hover { background: #475569; border-color: #cbd5e1; }
-
-        @media (max-width: 1150px) {
-            #game-wrapper { flex-direction: column; gap: 20px; }
-            #bot-panel, #mode-panel {
-                position: relative; right: auto; left: auto; top: auto; transform: none;
-                flex-direction: row; flex-wrap: wrap; justify-content: center;
-                width: 90vw; max-width: 500px;
-            }
-            #bot-panel.hidden, #mode-panel.hidden { display: none; }
-        }
     </style>
 </head>
 <body>
 
-    <h1 id="game-title">Collapse</h1>
-    <div id="network-status"></div>
-    
-    <div id="scoreboard"></div>
+    <div id="game-container">
+        <h1 id="game-title">Collapse</h1>
+        <div id="network-status"></div>
+        
+        <div id="scoreboard"></div>
+        <div id="status-container"></div>
+        
+        <div id="game-wrapper">
+            <div id="bot-panel">
+                <div class="panel-title">Opponent</div>
+                <button class="mode-btn active" id="btn-human" onclick="setMode('human')">Local 1v1</button>
+                <button class="mode-btn" id="btn-bot-easy" onclick="setMode('bot-easy')">Bot (Easy)</button>
+                <button class="mode-btn" id="btn-bot-hard" onclick="setMode('bot-hard')">Bot (Hard)</button>
+                <button class="mode-btn" id="btn-online" onclick="setMode('online')">Online (Beta)</button>
+            </div>
 
-    <div id="status-container"></div>
-    
-    <div id="game-wrapper">
-        <div id="bot-panel">
-            <div class="panel-title">Opponent</div>
-            <button class="mode-btn active" id="btn-human" onclick="setMode('human')">Local 1v1</button>
-            <button class="mode-btn" id="btn-bot-easy" onclick="setMode('bot-easy')">Bot (Easy)</button>
-            <button class="mode-btn" id="btn-bot-hard" onclick="setMode('bot-hard')">Bot (Hard)</button>
-            <button class="mode-btn" id="btn-online" onclick="setMode('online')">Online (Beta)</button>
+            <div id="board"></div>
+
+            <div id="mode-panel">
+                <div class="panel-title">Gamemode</div>
+                <button class="mode-btn active" id="btn-classic" onclick="setRuleMode('classic')">Classic</button>
+                <button class="mode-btn" id="btn-3player" onclick="setRuleMode('3player')">3 Player</button>
+                <button class="mode-btn" id="btn-4player" onclick="setRuleMode('4player')">4 Player</button>
+                <button class="mode-btn" id="btn-obstacle" onclick="setRuleMode('obstacle')">Obstacle</button>
+                <button class="mode-btn" id="btn-timebomb" onclick="setRuleMode('timebomb')">Time Bomb</button>
+                <button class="mode-btn" id="btn-7x7" onclick="setRuleMode('7x7')">7x7</button>
+                <button class="mode-btn" id="btn-9x9" onclick="setRuleMode('9x9')">9x9</button>
+            </div>
         </div>
-
-        <div id="board"></div>
-
-        <div id="mode-panel">
-            <div class="panel-title">Gamemode</div>
-            <button class="mode-btn active" id="btn-classic" onclick="setRuleMode('classic')">Classic</button>
-            <button class="mode-btn" id="btn-3player" onclick="setRuleMode('3player')">3 Player</button>
-            <button class="mode-btn" id="btn-4player" onclick="setRuleMode('4player')">4 Player</button>
-            <button class="mode-btn" id="btn-obstacle" onclick="setRuleMode('obstacle')">Obstacle</button>
-            <button class="mode-btn" id="btn-timebomb" onclick="setRuleMode('timebomb')">Time Bomb</button>
-            <button class="mode-btn" id="btn-7x7" onclick="setRuleMode('7x7')">7x7</button>
-            <button class="mode-btn" id="btn-9x9" onclick="setRuleMode('9x9')">9x9</button>
+        
+        <div id="bottom-controls">
+            <button class="action-btn" onclick="initGame()">Reset Game</button>
+            <button class="action-btn" onclick="startTutorial()">How to Play</button>
         </div>
-    </div>
-    
-    <div id="bottom-controls">
-        <button class="action-btn" onclick="initGame()">Reset Game</button>
-        <button class="action-btn" onclick="startTutorial()">How to Play</button>
     </div>
 
     <script>
@@ -324,7 +313,6 @@
         let gameActive = true; 
         let ws = null;
 
-        // Async Processing Sequence Queue Variables
         let networkQueue = [];
         let isProcessingQueue = false;
         
@@ -358,6 +346,31 @@
                 osc.start(); osc.stop(audioCtx.currentTime + 0.15);
             }
         }
+
+        // --- GLOBAL APPARATUS VISUAL SCALING LOGIC ---
+        function updateDynamicLayoutSizes() {
+            let totalWidth = currentCols * 75 + (currentCols - 1) * 6 + 24;
+            const sb = document.getElementById('scoreboard');
+            if (sb) sb.style.width = `${totalWidth}px`;
+
+            // Calculate precise footprint borders of layout
+            let targetWidth = totalWidth + 410; // Board dimensions + panel sizes + buffer paddings
+            let targetHeight = (currentRows * 75) + ((currentRows - 1) * 6) + 390;
+
+            let scaleX = window.innerWidth / targetWidth;
+            let scaleY = window.innerHeight / targetHeight;
+            let scale = Math.min(scaleX, scaleY);
+
+            // Cap matrix scaling at 1 to maintain flawless pixel fidelity on desktops
+            if (scale > 1) scale = 1;
+
+            const container = document.getElementById('game-container');
+            if (container) {
+                container.style.transform = `scale(${scale})`;
+            }
+        }
+        window.addEventListener('resize', updateDynamicLayoutSizes);
+        window.addEventListener('orientationchange', () => setTimeout(updateDynamicLayoutSizes, 100));
 
         function setMode(mode) {
             if (isTutorialMode) {
@@ -400,6 +413,7 @@
             initGame();
         }
 
+        // Variable setup index track gate
         function isSetupPhase() {
             return turn <= activePlayers.length;
         }
@@ -430,6 +444,7 @@
             isBotThinking = false;
             winner = null;
             
+            updateDynamicLayoutSizes();
             buildScoreboardDOM();
             renderBoard();
             updateStatus();
@@ -463,8 +478,8 @@
         function buildScoreboardDOM() {
             const sb = document.getElementById('scoreboard');
             sb.innerHTML = '';
-            let totalWidth = currentCols * 75 + (currentCols - 1) * 6 + 24;
-            sb.style.width = `${totalWidth}px`;
+            
+            updateDynamicLayoutSizes();
 
             activePlayers.forEach(p => {
                 const bar = document.createElement('div');
@@ -478,7 +493,6 @@
         function connectToServer() {
             if (ws) ws.close();
             
-            // NOTE: Replace this target extension with your active Render URL link!
             ws = new WebSocket('wss://collapse-game-engine.onrender.com');
 
             ws.onopen = () => {
@@ -526,7 +540,6 @@
                     updateScoreboard();
                 } 
                 else if (data.type === 'execute') {
-                    // Queue incoming packets to guarantee serial execution
                     networkQueue.push({ r: data.r, c: data.c });
                     processNetworkQueue();
                 } 
@@ -583,7 +596,6 @@
 
             if (gameMode === 'online') {
                 if (ws && ws.readyState === WebSocket.OPEN) {
-                    // Send structure reset message instead of dropping connection
                     ws.send(JSON.stringify({ type: 'request_reset' }));
                 } else {
                     connectToServer();
@@ -772,7 +784,6 @@
             if (winner) return;
             if (board[r][c].isObstacle) return;
 
-            // Online Mode Gatekeeper
             if (gameMode === 'online' && !fromNetwork) {
                 if (isAnimating) return; 
                 if (!gameActive || myColor !== currentPlayer) return;
@@ -783,7 +794,6 @@
                 return; 
             }
 
-            // Local Engine State Checking Logic
             if (!fromNetwork) {
                 if (isAnimating) return;
                 if (!fromBot && gameMode.startsWith('bot') && currentPlayer !== 'red') return;
@@ -1056,10 +1066,11 @@
             return alliedDots - enemyDots; 
         }
 
+        updateDynamicLayoutSizes();
         window.onload = initGame;
 
         if ('serviceWorker' in navigator) {
-             window.addEventListener('load', () => {
+            window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
                     .then(reg => console.log('PWA Ready!', reg.scope))
                     .catch(err => console.log('PWA Failed:', err));
