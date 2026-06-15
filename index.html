@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collapse</title>
+    <link href="https://fonts.googleapis.com/css2?family=Badeen+Display&family=Rubik:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="favicon.png">
+    <link rel="manifest" href="manifest.json">
+    <style>
+        :root {
+            --red: #ff3366;
+            --blue: #00ccff;
+            --green: #10b981;
+            --yellow: #facc15;
+            --neutral: #ffffff;
+            --bg-color: #0f172a;
+            --board-bg: #1e293b;
+            --cell-bg: #334155;
+            --obstacle-bg: #475569;
+            --text-main: #f8fafc;
+        }
+
+        body {
+            font-family: 'Rubik', sans-serif;
+            font-weight: 700;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            user-select: none;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            font-family: 'Badeen Display', sans-serif;
+            font-size: 6.5rem; 
+            margin: 0 0 5px 0;
+            font-weight: normal;
+            text-transform: uppercase;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.15);
+            transition: color 0.3s, text-shadow 0.3s;
+        }
+
+        #network-status {
+            font-size: 1rem;
+            color: #94a3b8;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            display: none;
+            text-align: center;
+        }
+
+        #scoreboard {
+            width: 423px; 
+            height: 12px;
+            display: flex;
+            background: #222;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5), inset 0 2px 4px rgba(0,0,0,0.5);
+            transition: width 0.3s ease;
+        }
+
+        .score-bar {
+            height: 100%;
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .score-bar.red { background-color: var(--red); box-shadow: 0 0 8px var(--red); }
+        .score-bar.blue { background-color: var(--blue); box-shadow: 0 0 8px var(--blue); }
+        .score-bar.green { background-color: var(--green); box-shadow: 0 0 8px var(--green); }
+        .score-bar.yellow { background-color: var(--yellow); box-shadow: 0 0 8px var(--yellow); }
+
+        #status-container {
+            min-height: 40px;
+            max-width: 600px;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            letter-spacing: 1px;
+            line-height: 1.4;
+        }
+
+        .red-text { color: var(--red); text-shadow: 0 0 8px var(--red); }
+        .blue-text { color: var(--blue); text-shadow: 0 0 8px var(--blue); }
+        .green-text { color: var(--green); text-shadow: 0 0 8px var(--green); }
+        .yellow-text { color: var(--yellow); text-shadow: 0 0 8px var(--yellow); }
+        .neutral-text { color: var(--neutral); text-shadow: 0 0 8px var(--neutral); }
+
+        #game-wrapper {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #bot-panel {
+            position: absolute;
+            right: calc(100% + 30px); 
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--board-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            transition: opacity 0.5s, transform 0.5s;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: max-content;
+        }
+
+        #mode-panel {
+            position: absolute;
+            left: calc(100% + 30px); 
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--board-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            transition: opacity 0.5s, transform 0.5s;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: max-content;
+        }
+
+        #bot-panel.hidden, #mode-panel.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-50%) scale(0.95);
+        }
+
+        .panel-title {
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            color: #94a3b8;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+
+        .mode-btn {
+            background: var(--cell-bg);
+            color: var(--text-main);
+            border: 2px solid transparent;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-family: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+
+        .mode-btn:hover { filter: brightness(1.2); }
+        .mode-btn.active { border-color: #ffffff; box-shadow: 0 0 12px rgba(255, 255, 255, 0.4); }
+
+        #board {
+            display: grid;
+            gap: 6px;
+            background: var(--board-bg);
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+            transition: opacity 0.3s;
+        }
+
+        #board.inactive-network {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .cell {
+            background: var(--cell-bg);
+            border-radius: 8px;
+            cursor: default; 
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            align-content: center; 
+            padding: 8px;
+            box-sizing: border-box;
+            border: 2px solid transparent; 
+            transition: background 0.3s, filter 0.2s, border-color 0.3s, box-shadow 0.3s;
+            position: relative;
+        }
+
+        .cell.owned-red { background-color: rgba(255, 51, 102, 0.08); }
+        .cell.owned-blue { background-color: rgba(0, 204, 255, 0.08); }
+        .cell.owned-green { background-color: rgba(16, 185, 129, 0.08); }
+        .cell.owned-yellow { background-color: rgba(250, 204, 21, 0.08); }
+        
+        .cell.obstacle { background-color: var(--obstacle-bg) !important; cursor: not-allowed !important; }
+        .cell.obstacle::after { content: '✕'; color: #1e293b; font-size: 1.4rem; position: absolute; }
+        .cell.timebomb-center { background-color: rgba(255, 255, 255, 0.03); border: 2px dashed #64748b; }
+
+        .cell.clickable { cursor: pointer; }
+        .cell.clickable:hover { filter: brightness(1.4); }
+
+        .cell.turn-red { border-color: rgba(255, 51, 102, 0.6); box-shadow: inset 0 0 15px rgba(255, 51, 102, 0.2); }
+        .cell.turn-blue { border-color: rgba(0, 204, 255, 0.6); box-shadow: inset 0 0 15px rgba(0, 204, 255, 0.2); }
+        .cell.turn-green { border-color: rgba(16, 185, 129, 0.6); box-shadow: inset 0 0 15px rgba(16, 185, 129, 0.2); }
+        .cell.turn-yellow { border-color: rgba(250, 204, 21, 0.6); box-shadow: inset 0 0 15px rgba(250, 204, 21, 0.2); }
+
+        .dot {
+            width: 16px; height: 16px; margin: 3px;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+            animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .dot.red { background-color: var(--red); }
+        .dot.blue { background-color: var(--blue); }
+        .dot.green { background-color: var(--green); }
+        .dot.yellow { background-color: var(--yellow); }
+        .dot.neutral { background-color: var(--neutral); box-shadow: 0 0 8px var(--neutral); }
+
+        @keyframes pop {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        #bottom-controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 35px;
+        }
+
+        .action-btn {
+            padding: 14px 28px;
+            font-family: inherit; 
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            background: var(--board-bg);
+            color: var(--text-main);
+            border: 2px solid #475569;
+            border-radius: 8px;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .action-btn:hover { background: #475569; border-color: #cbd5e1; }
+
+        @media (max-width: 1150px) {
+            #game-wrapper { flex-direction: column; gap: 20px; }
+            #bot-panel, #mode-panel {
+                position: relative; right: auto; left: auto; top: auto; transform: none;
+                flex-direction: row; flex-wrap: wrap; justify-content: center;
+                width: 90vw; max-width: 500px;
+            }
+            #bot-panel.hidden, #mode-panel.hidden { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1 id="game-title">Collapse</h1>
+    <div id="network-status"></div>
+    
+    <div id="scoreboard"></div>
+
+    <div id="status-container"></div>
+    
+    <div id="game-wrapper">
+        <div id="bot-panel">
+            <div class="panel-title">Opponent</div>
+            <button class="mode-btn active" id="btn-human" onclick="setMode('human')">Local 1v1</button>
+            <button class="mode-btn" id="btn-bot-easy" onclick="setMode('bot-easy')">Bot (Easy)</button>
+            <button class="mode-btn" id="btn-bot-hard" onclick="setMode('bot-hard')">Bot (Hard)</button>
+            <button class="mode-btn" id="btn-online" onclick="setMode('online')">Online (Beta)</button>
+        </div>
+
+        <div id="board"></div>
+
+        <div id="mode-panel">
+            <div class="panel-title">Gamemode</div>
+            <button class="mode-btn active" id="btn-classic" onclick="setRuleMode('classic')">Classic</button>
+            <button class="mode-btn" id="btn-3player" onclick="setRuleMode('3player')">3 Player</button>
+            <button class="mode-btn" id="btn-4player" onclick="setRuleMode('4player')">4 Player</button>
+            <button class="mode-btn" id="btn-obstacle" onclick="setRuleMode('obstacle')">Obstacle</button>
+            <button class="mode-btn" id="btn-timebomb" onclick="setRuleMode('timebomb')">Time Bomb</button>
+            <button class="mode-btn" id="btn-7x7" onclick="setRuleMode('7x7')">7x7</button>
+            <button class="mode-btn" id="btn-9x9" onclick="setRuleMode('9x9')">9x9</button>
+        </div>
+    </div>
+    
+    <div id="bottom-controls">
+        <button class="action-btn" onclick="initGame()">Reset Game</button>
+        <button class="action-btn" onclick="startTutorial()">How to Play</button>
+    </div>
+
+    <script>
+        let currentRows = 5;
+        let currentCols = 5;
+        let board = [];
+        let turn = 1;
+        let currentPlayer = 'red';
+        let isAnimating = false;
+        let winner = null;
+        
+        let gameMode = 'human'; 
+        let selectedRuleMode = 'classic';
+        let activePlayers = ['red', 'blue'];
+        let isBotThinking = false;
+
+        let isTutorialMode = false;
+        let tutorialStep = 0;
+
+        let myColor = null;
+        let gameActive = true; 
+        let ws = null;
+
+        // Async Processing Sequence Queue Variables
+        let networkQueue = [];
+        let isProcessingQueue = false;
+        
+        let audioCtx;
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playSound(type, combo = 0) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            if (type === 'place') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(500, audioCtx.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+            } else if (type === 'collapse') {
+                osc.type = 'square'; 
+                let baseFreq = 400 + (combo * 100); 
+                osc.frequency.setValueAtTime(baseFreq, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.5, audioCtx.currentTime + 0.15);
+                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+            }
+        }
+
+        function setMode(mode) {
+            if (isTutorialMode) {
+                isTutorialMode = false;
+                document.getElementById('game-title').textContent = 'Collapse';
+                document.getElementById('game-title').style.color = 'var(--text-main)';
+                document.getElementById('game-title').style.textShadow = '0 0 15px rgba(255, 255, 255, 0.15)';
+            }
+            
+            if (gameMode === 'online' && mode !== 'online') {
+                if (ws) { ws.close(); ws = null; }
+                document.getElementById('network-status').style.display = 'none';
+                document.getElementById('board').classList.remove('inactive-network');
+                gameActive = true; 
+            }
+
+            gameMode = mode;
+            document.querySelectorAll('#bot-panel .mode-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${mode}`).classList.add('active');
+            initAudio(); 
+
+            if (mode === 'online') {
+                document.getElementById('network-status').style.display = 'block';
+                document.getElementById('network-status').innerText = 'Connecting to server...';
+                document.getElementById('board').classList.add('inactive-network');
+                gameActive = false;
+                connectToServer();
+            } else {
+                initGame(); 
+            }
+        }
+
+        function setRuleMode(mode) {
+            if (gameMode === 'online') return; 
+            if (isTutorialMode) initGame(); 
+            selectedRuleMode = mode;
+            document.querySelectorAll('#mode-panel .mode-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${mode}`).classList.add('active');
+            initAudio();
+            initGame();
+        }
+
+        function isSetupPhase() {
+            return turn <= activePlayers.length;
+        }
+
+        function startTutorial() {
+            if (gameMode === 'online' && ws) ws.close();
+            document.getElementById('network-status').style.display = 'none';
+            document.getElementById('board').classList.remove('inactive-network');
+            gameActive = true;
+
+            isTutorialMode = true;
+            tutorialStep = 1;
+            selectedRuleMode = 'classic';
+            activePlayers = ['red', 'blue'];
+            currentRows = 5;
+            currentCols = 5;
+            
+            document.getElementById('game-title').textContent = 'Tutorial';
+            document.getElementById('game-title').style.color = '#facc15';
+            document.getElementById('game-title').style.textShadow = '0 0 15px rgba(250, 204, 21, 0.4)';
+            
+            document.getElementById('bot-panel').classList.add('hidden');
+            document.getElementById('mode-panel').classList.add('hidden');
+            
+            buildBoardMatrix();
+            currentPlayer = 'red';
+            isAnimating = false;
+            isBotThinking = false;
+            winner = null;
+            
+            buildScoreboardDOM();
+            renderBoard();
+            updateStatus();
+            updateScoreboard();
+        }
+
+        function buildBoardMatrix() {
+            board = Array.from({length: currentRows}, () => 
+                Array.from({length: currentCols}, () => ({dots: 0, color: null, isObstacle: false}))
+            );
+
+            if (selectedRuleMode === 'obstacle') {
+                let obstacles = [];
+                if (currentRows === 5) obstacles = [{r:1, c:1}, {r:1, c:3}, {r:3, c:1}, {r:3, c:3}];
+                else if (currentRows === 7) obstacles = [{r:1, c:1}, {r:1, c:5}, {r:3, c:3}, {r:5, c:1}, {r:5, c:5}];
+                else if (currentRows === 9) obstacles = [{r:2, c:2}, {r:2, c:6}, {r:4, c:4}, {r:6, c:2}, {r:6, c:6}];
+                
+                obstacles.forEach(obs => {
+                    if (board[obs.r] && board[obs.r][obs.c]) board[obs.r][obs.c].isObstacle = true;
+                });
+            }
+
+            if (selectedRuleMode === 'timebomb') {
+                let tbR = Math.floor(currentRows / 2);
+                let tbC = Math.floor(currentCols / 2);
+                board[tbR][tbC].dots = 1;
+                board[tbR][tbC].color = 'neutral';
+            }
+        }
+
+        function buildScoreboardDOM() {
+            const sb = document.getElementById('scoreboard');
+            sb.innerHTML = '';
+            let totalWidth = currentCols * 75 + (currentCols - 1) * 6 + 24;
+            sb.style.width = `${totalWidth}px`;
+
+            activePlayers.forEach(p => {
+                const bar = document.createElement('div');
+                bar.id = `score-${p}`;
+                bar.className = `score-bar ${p}`;
+                bar.style.width = `${100 / activePlayers.length}%`;
+                sb.appendChild(bar);
+            });
+        }
+
+        function connectToServer() {
+            if (ws) ws.close();
+            
+            // NOTE: Replace this target extension with your active Render URL link!
+            ws = new WebSocket('wss://collapse-game-engine.onrender.com');
+
+            ws.onopen = () => {
+                console.log("WebSocket Stream Connected.");
+                ws.send(JSON.stringify({ type: 'join_lobby', ruleMode: selectedRuleMode }));
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+
+                if (data.type === 'init') {
+                    myColor = data.color;
+                    gameActive = false;
+                    document.getElementById('board').classList.add('inactive-network');
+                    
+                    if (myColor === 'spectator') {
+                        document.getElementById('network-status').innerText = "Match in progress. Spectating field...";
+                    } else {
+                        document.getElementById('network-status').innerText = `Lobby Profile: ${myColor.toUpperCase()} | Waiting for connections...`;
+                    }
+                } 
+                else if (data.type === 'start') {
+                    selectedRuleMode = data.ruleMode;
+                    currentRows = data.rows;
+                    currentCols = data.cols;
+                    activePlayers = data.activePlayers;
+
+                    document.querySelectorAll('#mode-panel .mode-btn').forEach(btn => btn.classList.remove('active'));
+                    document.getElementById(`btn-${selectedRuleMode}`).classList.add('active');
+
+                    document.getElementById('network-status').innerText = `Lobby Active. Color Node: ${myColor.toUpperCase()}`;
+                    gameActive = true;
+                    document.getElementById('board').classList.remove('inactive-network');
+                    
+                    buildBoardMatrix();
+                    buildScoreboardDOM();
+                    turn = 1;
+                    currentPlayer = 'red';
+                    isAnimating = false;
+                    winner = null;
+                    networkQueue = [];
+
+                    renderBoard();
+                    updateStatus();
+                    updateScoreboard();
+                } 
+                else if (data.type === 'execute') {
+                    // Queue incoming packets to guarantee serial execution
+                    networkQueue.push({ r: data.r, c: data.c });
+                    processNetworkQueue();
+                } 
+                else if (data.type === 'player_left') {
+                    document.getElementById('network-status').innerText = `${data.color.toUpperCase()} disconnected. Awaiting replacement seat...`;
+                    gameActive = false;
+                    document.getElementById('board').classList.add('inactive-network');
+                }
+            };
+
+            ws.onclose = () => {
+                if (gameMode === 'online') {
+                    document.getElementById('network-status').innerText = "Connection Severed. Click Reset Game to verify endpoint link.";
+                    gameActive = false;
+                    document.getElementById('board').classList.add('inactive-network');
+                }
+            };
+        }
+
+        async function processNetworkQueue() {
+            if (isProcessingQueue) return;
+            isProcessingQueue = true;
+
+            while (networkQueue.length > 0) {
+                const currentMove = networkQueue.shift();
+                await runNetworkVerifiedPhysics(currentMove.r, currentMove.c);
+            }
+
+            isProcessingQueue = false;
+        }
+
+        async function runNetworkVerifiedPhysics(r, c) {
+            const cell = board[r][c];
+            if (isSetupPhase()) {
+                cell.dots = 3;
+                cell.color = currentPlayer;
+                playSound('place');
+                endTurn();
+            } else {
+                cell.dots++;
+                playSound('place');
+                await processExpansions();
+                if (!winner) endTurn();
+            }
+        }
+
+        function initGame() {
+            if (isTutorialMode) {
+                isTutorialMode = false;
+                document.getElementById('game-title').textContent = 'Collapse';
+                document.getElementById('game-title').style.color = 'var(--text-main)';
+                document.getElementById('game-title').style.textShadow = '0 0 15px rgba(255, 255, 255, 0.15)';
+            }
+
+            if (gameMode === 'online') {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    // Send structure reset message instead of dropping connection
+                    ws.send(JSON.stringify({ type: 'request_reset' }));
+                } else {
+                    connectToServer();
+                }
+                return;
+            }
+
+            currentRows = 5;
+            currentCols = 5;
+            activePlayers = ['red', 'blue'];
+
+            if (selectedRuleMode === '3player') activePlayers = ['red', 'blue', 'green'];
+            else if (selectedRuleMode === '4player') activePlayers = ['red', 'blue', 'green', 'yellow'];
+            else if (selectedRuleMode === '7x7') { currentRows = 7; currentCols = 7; }
+            else if (selectedRuleMode === '9x9') { currentRows = 9; currentCols = 9; }
+
+            buildBoardMatrix();
+            turn = 1;
+            currentPlayer = 'red';
+            isAnimating = false;
+            isBotThinking = false;
+            winner = null;
+            
+            document.getElementById('board').innerHTML = ''; 
+            document.getElementById('bot-panel').classList.remove('hidden'); 
+            document.getElementById('mode-panel').classList.remove('hidden'); 
+
+            buildScoreboardDOM();
+            renderBoard();
+            updateStatus();
+            updateScoreboard();
+        }
+
+        function updateScoreboard() {
+            let counts = {};
+            activePlayers.forEach(p => counts[p] = 0);
+
+            for (let r = 0; r < currentRows; r++) {
+                for (let c = 0; c < currentCols; c++) {
+                    let col = board[r][c].color;
+                    if (activePlayers.includes(col)) counts[col] += board[r][c].dots;
+                }
+            }
+
+            let total = 0;
+            activePlayers.forEach(p => total += counts[p]);
+
+            activePlayers.forEach(p => {
+                const bar = document.getElementById(`score-${p}`);
+                if (bar) {
+                    let pct = total === 0 ? (100 / activePlayers.length) : (counts[p] / total) * 100;
+                    bar.style.width = `${pct}%`;
+                }
+            });
+        }
+
+        function updateStatus() {
+            const statusEl = document.getElementById('status-container');
+            
+            if (gameMode === 'online' && !gameActive) {
+                statusEl.innerHTML = ''; return; 
+            }
+
+            if (isTutorialMode) {
+                if (tutorialStep === 1) statusEl.innerHTML = `<span>The goal is to capture all dots. Click the glowing square to place your first 3 dots!</span>`;
+                else if (tutorialStep === 2) statusEl.innerHTML = `<span>Now the opponent places their defenses nearby...</span>`;
+                else if (tutorialStep === 3) statusEl.innerHTML = `<span>A square holds a MAX of 3 dots. Click your <span class="red-text">RED</span> square to add a 4th dot and trigger a chain reaction!</span>`;
+                else if (tutorialStep === 4) statusEl.innerHTML = `<span>Expanding dots capture the enemy. Click RESET GAME to play for real.</span>`;
+                return;
+            }
+
+            if (winner) {
+                if (winner === 'None') statusEl.innerHTML = `<span><span class="neutral-text">MUTUAL ANNIHILATION! TIE GAME</span></span>`;
+                else statusEl.innerHTML = `<span><span class="${winner}-text">${winner.toUpperCase()} WINS!</span></span>`;
+                return;
+            }
+
+            const playerName = currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1);
+            const pSpan = `<span class="${currentPlayer}-text">${playerName}</span>`;
+            
+            if (isSetupPhase()) {
+                statusEl.innerHTML = `<span>Turn ${turn}:&nbsp;${pSpan}, click any empty square</span>`;
+            } else {
+                statusEl.innerHTML = `<span>${pSpan}'s turn</span>`;
+            }
+        }
+
+        function getPlayerCellCount(p) {
+            let count = 0;
+            for (let r = 0; r < currentRows; r++) {
+                for (let c = 0; c < currentCols; c++) {
+                    if (board[r][c].color === p) count++;
+                }
+            }
+            return count;
+        }
+
+        function renderBoard() {
+            const boardEl = document.getElementById('board');
+
+            if (boardEl.children.length !== currentRows * currentCols) {
+                boardEl.innerHTML = '';
+                boardEl.style.gridTemplateColumns = `repeat(${currentCols}, 75px)`;
+                boardEl.style.gridTemplateRows = `repeat(${currentRows}, 75px)`;
+                for (let r = 0; r < currentRows; r++) {
+                    for (let c = 0; c < currentCols; c++) {
+                        const cellEl = document.createElement('div');
+                        cellEl.id = `cell-${r}-${c}`; 
+                        cellEl.onclick = () => handleCellClick(r, c);
+                        boardEl.appendChild(cellEl);
+                    }
+                }
+            }
+
+            let isHumanTurn = true;
+            if (gameMode === 'online') {
+                isHumanTurn = (myColor === currentPlayer);
+            } else {
+                isHumanTurn = !(gameMode.startsWith('bot') && currentPlayer !== 'red');
+            }
+
+            for (let r = 0; r < currentRows; r++) {
+                for (let c = 0; c < currentCols; c++) {
+                    const cellData = board[r][c];
+                    const cellEl = document.getElementById(`cell-${r}-${c}`);
+                    
+                    cellEl.className = 'cell';
+
+                    if (cellData.isObstacle) {
+                        cellEl.classList.add('obstacle');
+                        cellEl.innerHTML = '';
+                        continue;
+                    }
+
+                    if (selectedRuleMode === 'timebomb' && r === Math.floor(currentRows/2) && c === Math.floor(currentCols/2)) {
+                        cellEl.classList.add('timebomb-center');
+                    }
+
+                    if (cellData.color) cellEl.classList.add(`owned-${cellData.color}`);
+
+                    let isClickable = false;
+
+                    if (isTutorialMode) {
+                        if (tutorialStep === 1 && r === 2 && c === 2) isClickable = true;
+                        if (tutorialStep === 3 && r === 2 && c === 2) isClickable = true;
+                    } else if (gameActive && !winner && !isAnimating) {
+                        if (selectedRuleMode === 'timebomb' && r === Math.floor(currentRows/2) && c === Math.floor(currentCols/2)) {
+                            isClickable = false;
+                        } else if (isHumanTurn) {
+                            if (isSetupPhase()) {
+                                if (cellData.dots === 0) isClickable = true;
+                            } else {
+                                if (cellData.color === currentPlayer) isClickable = true;
+                            }
+                        }
+                    }
+
+                    if (isClickable) {
+                        cellEl.classList.add('clickable');
+                        if (isTutorialMode) cellEl.classList.add('turn-red'); 
+                        else if (!isSetupPhase()) cellEl.classList.add(`turn-${currentPlayer}`);
+                    }
+                    
+                    cellEl.setAttribute('data-dots', cellData.dots);
+                    const currentDotsCount = cellEl.children.length;
+
+                    if (cellData.dots === 0) {
+                        cellEl.innerHTML = '';
+                    } else if (cellData.dots > currentDotsCount) {
+                        for (let child of cellEl.children) child.className = `dot ${cellData.color}`;
+                        for (let i = 0; i < cellData.dots - currentDotsCount; i++) {
+                            const dot = document.createElement('div');
+                            dot.className = `dot ${cellData.color}`;
+                            cellEl.appendChild(dot);
+                        }
+                    } else {
+                        for (let child of cellEl.children) child.className = `dot ${cellData.color}`;
+                    }
+                }
+            }
+        }
+
+        async function handleCellClick(r, c, fromBot = false, fromNetwork = false) {
+            initAudio(); 
+
+            if (winner) return;
+            if (board[r][c].isObstacle) return;
+
+            // Online Mode Gatekeeper
+            if (gameMode === 'online' && !fromNetwork) {
+                if (isAnimating) return; 
+                if (!gameActive || myColor !== currentPlayer) return;
+                if (isSetupPhase() && board[r][c].dots !== 0) return;
+                if (!isSetupPhase() && board[r][c].color !== currentPlayer) return;
+                
+                ws.send(JSON.stringify({ type: 'move', r: r, c: c }));
+                return; 
+            }
+
+            // Local Engine State Checking Logic
+            if (!fromNetwork) {
+                if (isAnimating) return;
+                if (!fromBot && gameMode.startsWith('bot') && currentPlayer !== 'red') return;
+            }
+            
+            const cell = board[r][c];
+            if (isSetupPhase()) {
+                if (cell.dots !== 0) return; 
+                cell.dots = 3;
+                cell.color = currentPlayer;
+                playSound('place');
+                endTurn();
+            } 
+            else {
+                if (cell.color !== currentPlayer) return; 
+                cell.dots++;
+                playSound('place');
+                await processExpansions();
+                if (!winner) endTurn();
+            }
+        }
+
+        async function processExpansions() {
+            isAnimating = true;
+            renderBoard(); 
+
+            let isExpanding = true;
+            let comboCount = 0; 
+
+            while (isExpanding) {
+                let readyToExpand = [];
+
+                for (let r = 0; r < currentRows; r++) {
+                    for (let c = 0; c < currentCols; c++) {
+                        if (board[r][c].isObstacle) continue;
+                        if (selectedRuleMode === 'timebomb' && r === Math.floor(currentRows/2) && c === Math.floor(currentCols/2)) continue;
+
+                        if (board[r][c].dots >= 4) {
+                            readyToExpand.push({ r, c, color: board[r][c].color });
+                        }
+                    }
+                }
+
+                if (readyToExpand.length === 0) {
+                    isExpanding = false;
+                    break;
+                }
+
+                playSound('collapse', comboCount);
+                comboCount++;
+
+                for (let exp of readyToExpand) {
+                    board[exp.r][exp.c].dots = 0;
+                    board[exp.r][exp.c].color = null;
+                }
+
+                for (let exp of readyToExpand) {
+                    const neighbors = [
+                        { r: exp.r - 1, c: exp.c }, { r: exp.r + 1, c: exp.c }, 
+                        { r: exp.r, c: exp.c - 1 }, { r: exp.r, c: exp.c + 1 }  
+                    ];
+
+                    for (let n of neighbors) {
+                        if (n.r >= 0 && n.r < currentRows && n.c >= 0 && n.c < currentCols) {
+                            if (board[n.r][n.c].isObstacle) continue;
+                            if (selectedRuleMode === 'timebomb' && n.r === Math.floor(currentRows/2) && n.c === Math.floor(currentCols/2)) continue;
+
+                            const neighborCell = board[n.r][n.c];
+                            neighborCell.color = exp.color; 
+                            neighborCell.dots++;
+                            if (neighborCell.dots > 4) neighborCell.dots = 4;
+                        }
+                    }
+                }
+
+                renderBoard();
+                updateScoreboard();
+                
+                if (!isTutorialMode) checkWinCondition();
+                if (winner) { isExpanding = false; break; }
+
+                await new Promise(resolve => setTimeout(resolve, 350));
+            }
+
+            isAnimating = false;
+            renderBoard();
+        }
+
+        function checkWinCondition() {
+            if (isSetupPhase()) return; 
+
+            let survivors = [];
+            activePlayers.forEach(p => {
+                if (getPlayerCellCount(p) > 0) survivors.push(p);
+            });
+
+            if (survivors.length === 1) {
+                winner = survivors[0];
+            } else if (survivors.length === 0) {
+                winner = 'None';
+            }
+
+            if (winner) updateStatus();
+        }
+
+        function handleTimeBombTick() {
+            let tbR = Math.floor(currentRows / 2);
+            let tbC = Math.floor(currentCols / 2);
+            
+            board[tbR][tbC].color = 'neutral';
+            board[tbR][tbC].dots++;
+
+            if (board[tbR][tbC].dots >= 4) {
+                setTimeout(async () => {
+                    isAnimating = true;
+                    playSound('collapse', 2);
+                    board[tbR][tbC].dots = 0;
+                    board[tbR][tbC].color = 'neutral';
+
+                    const neighbors = [
+                        { r: tbR - 1, c: tbC }, { r: tbR + 1, c: tbC },
+                        { r: tbR, c: tbC - 1 }, { r: tbR, c: tbC + 1 }
+                    ];
+
+                    for (let n of neighbors) {
+                        if (n.r >= 0 && n.r < currentRows && n.c >= 0 && n.c < currentCols) {
+                            if (!board[n.r][n.c].isObstacle) {
+                                board[n.r][n.c].dots = 0;
+                                board[n.r][n.c].color = null;
+                            }
+                        }
+                    }
+                    isAnimating = false;
+                    renderBoard();
+                    updateScoreboard();
+                    checkWinCondition();
+                }, 200);
+            }
+        }
+
+        function endTurn() {
+            if (turn === 1 && gameMode !== 'online') {
+                document.getElementById('bot-panel').classList.add('hidden');
+                document.getElementById('mode-panel').classList.add('hidden');
+            }
+
+            turn++;
+            
+            let currentIndex = activePlayers.indexOf(currentPlayer);
+            let nextIndex = (currentIndex + 1) % activePlayers.length;
+
+            if (!isSetupPhase()) {
+                let attempts = 0;
+                while (getPlayerCellCount(activePlayers[nextIndex]) === 0 && attempts < activePlayers.length) {
+                    nextIndex = (nextIndex + 1) % activePlayers.length;
+                    attempts++;
+                }
+            }
+
+            currentPlayer = activePlayers[nextIndex];
+
+            if (selectedRuleMode === 'timebomb' && !winner) {
+                handleTimeBombTick();
+            }
+
+            updateStatus();
+            renderBoard();
+            updateScoreboard();
+
+            if (gameMode !== 'online' && currentPlayer !== 'red' && gameMode.startsWith('bot') && !winner) {
+                isBotThinking = true;
+                setTimeout(triggerBotMove, 600); 
+            } else {
+                isBotThinking = false;
+            }
+        }
+
+        function triggerBotMove() {
+            if (winner) return;
+
+            let validMoves = [];
+            for (let r = 0; r < currentRows; r++) {
+                for (let c = 0; c < currentCols; c++) {
+                    if (board[r][c].isObstacle) continue;
+                    if (selectedRuleMode === 'timebomb' && r === Math.floor(currentRows/2) && c === Math.floor(currentCols/2)) continue;
+
+                    if (isSetupPhase()) {
+                        if (board[r][c].dots === 0) validMoves.push({r, c});
+                    } else {
+                        if (board[r][c].color === currentPlayer) validMoves.push({r, c});
+                    }
+                }
+            }
+
+            if (validMoves.length === 0) {
+                endTurn(); return;
+            }
+
+            let selectedMove;
+
+            if (gameMode === 'bot-easy') {
+                selectedMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+            } else if (gameMode === 'bot-hard') {
+                let bestScore = -Infinity, bestMoves = [];
+
+                for (let move of validMoves) {
+                    let score = simulatePhysicsForScore(move.r, move.c);
+                    if (score > bestScore) {
+                        bestScore = score; bestMoves = [move];
+                    } else if (score === bestScore) {
+                        bestMoves.push(move);
+                    }
+                }
+                selectedMove = bestMoves[Math.floor(Math.random() * bestMoves.length)];
+            }
+
+            handleCellClick(selectedMove.r, selectedMove.c, true, false);
+        }
+
+        function simulatePhysicsForScore(r, c) {
+            let tempBoard = board.map(row => row.map(cell => ({...cell})));
+
+            if (isSetupPhase()) {
+                tempBoard[r][c].dots = 3; tempBoard[r][c].color = currentPlayer;
+            } else {
+                tempBoard[r][c].dots++;
+            }
+
+            let isExpanding = true;
+            let iterations = 0;
+            while(isExpanding && iterations < 50) {
+                iterations++;
+                let ready = [];
+                for (let tr = 0; tr < currentRows; tr++) {
+                    for (let tc = 0; tc < currentCols; tc++) {
+                        if (tempBoard[tr][tc].isObstacle) continue;
+                        if (selectedRuleMode === 'timebomb' && tr === Math.floor(currentRows/2) && tc === Math.floor(currentCols/2)) continue;
+                        if (tempBoard[tr][tc].dots >= 4) ready.push({r: tr, c: tc, color: tempBoard[tr][tc].color});
+                    }
+                }
+                if(ready.length === 0) break;
+
+                for(let exp of ready) {
+                    tempBoard[exp.r][exp.c].dots = 0; tempBoard[exp.r][exp.c].color = null;
+                }
+
+                for(let exp of ready) {
+                    const neighbors = [ {r:exp.r-1, c:exp.c}, {r:exp.r+1, c:exp.c}, {r:exp.r, c:exp.c-1}, {r:exp.r, c:exp.c+1} ];
+                    for (let n of neighbors) {
+                        if (n.r >= 0 && n.r < currentRows && n.c >= 0 && n.c < currentCols) {
+                            if (tempBoard[n.r][n.c].isObstacle) continue;
+                            if (selectedRuleMode === 'timebomb' && n.r === Math.floor(currentRows/2) && n.c === Math.floor(currentCols/2)) continue;
+
+                            tempBoard[n.r][n.c].color = exp.color;
+                            tempBoard[n.r][n.c].dots++;
+                            if (tempBoard[n.r][n.c].dots > 4) tempBoard[n.r][n.c].dots = 4;
+                        }
+                    }
+                }
+            }
+
+            let alliedDots = 0, enemyDots = 0;
+            for (let tr = 0; tr < currentRows; tr++) {
+                for (let tc = 0; tc < currentCols; tc++) {
+                    if (tempBoard[tr][tc].isObstacle) continue;
+                    if (tempBoard[tr][tc].color === currentPlayer) alliedDots += tempBoard[tr][tc].dots;
+                    else if (tempBoard[tr][tc].color !== null) enemyDots += tempBoard[tr][tc].dots;
+                }
+            }
+            return alliedDots - enemyDots; 
+        }
+
+        window.onload = initGame;
+
+        if ('serviceWorker' in navigator) {
+             window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('PWA Ready!', reg.scope))
+                    .catch(err => console.log('PWA Failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>
