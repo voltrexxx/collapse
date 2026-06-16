@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Collapse</title>
-    <link href="https://fonts.googleapis.com/css2?family=Badeen+Display&family=Rubik:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Badeen+Display&family=Rubik:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         :root {
             --red: #ff3366;
@@ -17,6 +17,7 @@
             --cell-bg: #334155;
             --obstacle-bg: #475569;
             --text-main: #f8fafc;
+            --cell-size: 75px; 
         }
 
         body {
@@ -49,8 +50,8 @@
 
         h1 {
             font-family: 'Badeen Display', sans-serif;
-            font-size: 8.5rem; /* Massive authoritative branding typography */
-            margin: 0 0 35px 0; /* Clear padding zone decoupling logo from the scorebar */
+            font-size: 8.5rem; 
+            margin: 0 0 35px 0; 
             font-weight: normal;
             text-transform: uppercase;
             text-shadow: 0 0 15px rgba(255, 255, 255, 0.15);
@@ -74,7 +75,7 @@
             background: #222;
             border-radius: 6px;
             overflow: hidden;
-            margin-bottom: 20px; /* Separates tracker bar cleanly from the turn text */
+            margin-bottom: 20px; 
             box-shadow: 0 0 10px rgba(0,0,0,0.5), inset 0 2px 4px rgba(0,0,0,0.5);
         }
 
@@ -90,7 +91,7 @@
         #status-container {
             min-height: 40px;
             max-width: 600px;
-            margin-bottom: 30px; /* Cushion separating status information from game field */
+            margin-bottom: 30px; 
             font-size: 1.1rem;
             text-align: center;
             display: flex;
@@ -106,13 +107,20 @@
         .yellow-text { color: var(--yellow); text-shadow: 0 0 8px var(--yellow); }
         .neutral-text { color: var(--neutral); text-shadow: 0 0 8px var(--neutral); }
 
-        /* Row Configuration Fixed Across All Devices */
         #game-wrapper {
             display: flex;
             flex-direction: row; 
             align-items: center;
             justify-content: center;
             gap: 30px;
+        }
+
+        #board-area {
+            position: relative; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
 
         #bot-panel, #mode-panel {
@@ -167,7 +175,7 @@
             padding: 12px;
             border-radius: 12px;
             box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
-            transition: opacity 0.3s;
+            position: relative;
         }
 
         #board.inactive-network {
@@ -175,7 +183,6 @@
             pointer-events: none;
         }
 
-        /* Restored Pristine Grid Layout Styles */
         .cell {
             background: var(--cell-bg);
             border-radius: 8px;
@@ -188,7 +195,7 @@
             padding: 8px;
             box-sizing: border-box;
             border: 2px solid transparent; 
-            transition: background 0.3s, filter 0.2s, border-color 0.3s, box-shadow 0.3s;
+            transition: background 0.2s, filter 0.15s, border-color 0.2s, box-shadow 0.2s;
             position: relative;
         }
 
@@ -202,32 +209,92 @@
         .cell.timebomb-center { background-color: rgba(255, 255, 255, 0.03); border: 2px dashed #64748b; }
 
         .cell.clickable { cursor: pointer; }
-        .cell.clickable:hover { filter: brightness(1.4); }
+        .cell.clickable:hover { filter: brightness(1.35); transform: scale(1.02); z-index: 2; }
+        .cell.clickable:active { transform: scale(0.96); }
 
         .cell.turn-red { border-color: rgba(255, 51, 102, 0.6); box-shadow: inset 0 0 15px rgba(255, 51, 102, 0.2); }
         .cell.turn-blue { border-color: rgba(0, 204, 255, 0.6); box-shadow: inset 0 0 15px rgba(0, 204, 255, 0.2); }
         .cell.turn-green { border-color: rgba(16, 185, 129, 0.6); box-shadow: inset 0 0 15px rgba(16, 185, 129, 0.2); }
         .cell.turn-yellow { border-color: rgba(250, 204, 21, 0.6); box-shadow: inset 0 0 15px rgba(250, 204, 21, 0.2); }
 
-        /* Restored Pristine Dot Aesthetics */
+        /* --- RESTORED DOT ENGINE LOGIC AND GRAPHIC COLORS --- */
         .dot {
             width: 16px; 
             height: 16px; 
             margin: 3px;
             border-radius: 50%;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
-            animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
         }
 
-        .dot.red { background-color: var(--red); }
-        .dot.blue { background-color: var(--blue); }
-        .dot.green { background-color: var(--green); }
-        .dot.yellow { background-color: var(--yellow); }
+        .dot.red { background-color: var(--red); box-shadow: 0 2px 4px rgba(0,0,0,0.4); }
+        .dot.blue { background-color: var(--blue); box-shadow: 0 2px 4px rgba(0,0,0,0.4); }
+        .dot.green { background-color: var(--green); box-shadow: 0 2px 4px rgba(0,0,0,0.4); }
+        .dot.yellow { background-color: var(--yellow); box-shadow: 0 2px 4px rgba(0,0,0,0.4); }
         .dot.neutral { background-color: var(--neutral); box-shadow: 0 0 8px var(--neutral); }
+
+        /* Isolated entrance pulse solely on newly incoming increments */
+        .dot.pop-entrance {
+            animation: pop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
 
         @keyframes pop {
             0% { transform: scale(0); opacity: 0; }
+            70% { transform: scale(1.2); }
             100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* --- KINETIC INLINE TRANSITION PRODUCERS --- */
+        .flying-dot {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            z-index: 99;
+            pointer-events: none;
+            /* Hardware-accelerated transitions slide elements fluidly without DOM interruptions */
+            transition: transform 0.3s cubic-bezier(0.1, 0.8, 0.25, 1);
+        }
+
+        /* Board High Combo Kinetic Vibrator */
+        .shake-active {
+            animation: boardVibrate 0.18s linear infinite;
+        }
+
+        @keyframes boardVibrate {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            20% { transform: translate(-2px, -1px) rotate(-0.5deg); }
+            40% { transform: translate(-1px, 2px) rotate(0.5deg); }
+            60% { transform: translate(2px, 1px) rotate(0deg); }
+            80% { transform: translate(-1px, -1px) rotate(-0.5deg); }
+            100% { transform: translate(1px, 2px) rotate(0.5deg); }
+        }
+
+        /* Highly Legible Combo Text Map */
+        #combo-float {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            font-family: 'Rubik', sans-serif; 
+            font-weight: 900; 
+            font-size: 2.4rem; 
+            z-index: 100;
+            pointer-events: none;
+            text-transform: uppercase;
+            letter-spacing: 4px; 
+            opacity: 0;
+        }
+
+        .combo-popup-anim {
+            animation: alertPop 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; 
+        }
+
+        @keyframes alertPop {
+            0% { transform: translate(-50%, -35%) scale(0.4) rotate(-8deg); opacity: 0; }
+            15% { transform: translate(-50%, -50%) scale(1.1) rotate(4deg); opacity: 1; }
+            25% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+            80% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; } 
+            100% { transform: translate(-50%, -70%) scale(0.8) rotate(-4deg); opacity: 0; }
         }
 
         #bottom-controls {
@@ -272,7 +339,10 @@
                 <button class="mode-btn" id="btn-online" onclick="setMode('online')">Online (Beta)</button>
             </div>
 
-            <div id="board"></div>
+            <div id="board-area">
+                <div id="combo-float">Combo x3</div>
+                <div id="board"></div>
+            </div>
 
             <div id="mode-panel">
                 <div class="panel-title">Gamemode</div>
@@ -347,21 +417,18 @@
             }
         }
 
-        // --- GLOBAL APPARATUS VISUAL SCALING LOGIC ---
         function updateDynamicLayoutSizes() {
             let totalWidth = currentCols * 75 + (currentCols - 1) * 6 + 24;
             const sb = document.getElementById('scoreboard');
             if (sb) sb.style.width = `${totalWidth}px`;
 
-            // Calculate precise footprint borders of layout
-            let targetWidth = totalWidth + 410; // Board dimensions + panel sizes + buffer paddings
+            let targetWidth = totalWidth + 410; 
             let targetHeight = (currentRows * 75) + ((currentRows - 1) * 6) + 390;
 
             let scaleX = window.innerWidth / targetWidth;
             let scaleY = window.innerHeight / targetHeight;
             let scale = Math.min(scaleX, scaleY);
 
-            // Cap matrix scaling at 1 to maintain flawless pixel fidelity on desktops
             if (scale > 1) scale = 1;
 
             const container = document.getElementById('game-container');
@@ -413,7 +480,6 @@
             initGame();
         }
 
-        // Variable setup index track gate
         function isSetupPhase() {
             return turn <= activePlayers.length;
         }
@@ -492,7 +558,6 @@
 
         function connectToServer() {
             if (ws) ws.close();
-            
             ws = new WebSocket('wss://collapse-game-engine.onrender.com');
 
             ws.onopen = () => {
@@ -693,10 +758,12 @@
             return count;
         }
 
+        // --- ISOLATED RECYCLING RESIDENT RENDERING ENGINE (SHAKING ELIMINATED) ---
         function renderBoard() {
             const boardEl = document.getElementById('board');
 
-            if (boardEl.children.length !== currentRows * currentCols) {
+            // CRITICAL FIX: Evaluate ONLY '.cell' classes to ensure floating transition nodes do not flag a size mismatch!
+            if (boardEl.querySelectorAll('.cell').length !== currentRows * currentCols) {
                 boardEl.innerHTML = '';
                 boardEl.style.gridTemplateColumns = `repeat(${currentCols}, 75px)`;
                 boardEl.style.gridTemplateRows = `repeat(${currentRows}, 75px)`;
@@ -760,22 +827,95 @@
                     }
                     
                     cellEl.setAttribute('data-dots', cellData.dots);
-                    const currentDotsCount = cellEl.children.length;
+                    
+                    // Filter out any temporary independent overlay items inside the layout
+                    const activeDots = cellEl.querySelectorAll('.dot:not(.flying-dot)');
 
                     if (cellData.dots === 0) {
-                        cellEl.innerHTML = '';
-                    } else if (cellData.dots > currentDotsCount) {
-                        for (let child of cellEl.children) child.className = `dot ${cellData.color}`;
-                        for (let i = 0; i < cellData.dots - currentDotsCount; i++) {
+                        activeDots.forEach(d => d.remove());
+                    } else if (cellData.dots > activeDots.length) {
+                        // Keep stable background graphics untouched so they NEVER break state or bounce unexpectedly
+                        activeDots.forEach(d => {
+                            if (!d.classList.contains(cellData.color)) d.className = `dot ${cellData.color}`;
+                        });
+                        // Isolate entrance animations strictly to new items arriving
+                        for (let i = 0; i < cellData.dots - activeDots.length; i++) {
                             const dot = document.createElement('div');
-                            dot.className = `dot ${cellData.color}`;
+                            dot.className = `dot ${cellData.color} pop-entrance`;
                             cellEl.appendChild(dot);
                         }
+                    } else if (cellData.dots < activeDots.length) {
+                        for (let i = activeDots.length - 1; i >= cellData.dots; i--) {
+                            activeDots[i].remove();
+                        }
+                        const remaining = cellEl.querySelectorAll('.dot:not(.flying-dot)');
+                        remaining.forEach(d => {
+                            if (!d.classList.contains(cellData.color)) d.className = `dot ${cellData.color}`;
+                        });
                     } else {
-                        for (let child of cellEl.children) child.className = `dot ${cellData.color}`;
+                        activeDots.forEach(d => {
+                            if (!d.classList.contains(cellData.color)) d.className = `dot ${cellData.color}`;
+                        });
                     }
                 }
             }
+        }
+
+        // --- HARDWARE-ACCELERATED LAYERED GRID TRANSITION GENERATOR ---
+        function triggerFlyingParticles(r, c, color) {
+            const boardEl = document.getElementById('board');
+            if (!boardEl) return;
+
+            const directions = ['up', 'down', 'left', 'right'];
+            
+            // Calculates precise coordinates based on grid channels
+            let startTop = 12 + r * 81 + (75 / 2) - 8;
+            let startLeft = 12 + c * 81 + (75 / 2) - 8;
+
+            directions.forEach(dir => {
+                if (dir === 'up' && r === 0) return;
+                if (dir === 'down' && r === currentRows - 1) return;
+                if (dir === 'left' && c === 0) return;
+                if (dir === 'right' && c === currentCols - 1) return;
+
+                const particle = document.createElement('div');
+                // Added classes perfectly so styles can link color palettes back instantly
+                particle.className = `flying-dot dot ${color}`;
+                particle.style.top = startTop + 'px';
+                particle.style.left = startLeft + 'px';
+                
+                boardEl.appendChild(particle);
+
+                // FORCE GRAPHICS REFLOW MATRIX RECALCULATION FRAME
+                // This makes the inline transition render completely smoothly instead of jumping invisibly.
+                void particle.offsetWidth;
+
+                // Move pieces smoothly across cell spacing parameters
+                if (dir === 'up') particle.style.transform = 'translateY(-81px)';
+                if (dir === 'down') particle.style.transform = 'translateY(81px)';
+                if (dir === 'left') particle.style.transform = 'translateX(-81px)';
+                if (dir === 'right') particle.style.transform = 'translateX(81px)';
+
+                setTimeout(() => particle.remove(), 300);
+            });
+        }
+
+        function triggerComboAnnouncer(comboCount, color) {
+            const floater = document.getElementById('combo-float');
+            if (!floater) return;
+
+            floater.innerText = `Combo x${comboCount}!`;
+            floater.style.color = `var(--${color})`;
+            floater.style.textShadow = `
+                -2px -2px 0 #000,  
+                 2px -2px 0 #000,
+                -2px  2px 0 #000,
+                 2px  2px 0 #000,
+                 0 0 20px var(--${color})`;
+
+            floater.className = ''; 
+            void floater.offsetWidth; 
+            floater.className = 'combo-popup-anim';
         }
 
         async function handleCellClick(r, c, fromBot = false, fromNetwork = false) {
@@ -818,10 +958,9 @@
 
         async function processExpansions() {
             isAnimating = true;
-            renderBoard(); 
-
             let isExpanding = true;
             let comboCount = 0; 
+            const boardContainer = document.getElementById('board');
 
             while (isExpanding) {
                 let readyToExpand = [];
@@ -845,11 +984,25 @@
                 playSound('collapse', comboCount);
                 comboCount++;
 
+                if (comboCount >= 3) {
+                    triggerComboAnnouncer(comboCount, readyToExpand[0].color);
+                    boardContainer.classList.add('shake-active');
+                }
+
+                // STAGE 1: Launch vectors outwards from cell centers and instantly wipe baseline sources
                 for (let exp of readyToExpand) {
+                    triggerFlyingParticles(exp.r, exp.c, exp.color); 
                     board[exp.r][exp.c].dots = 0;
                     board[exp.r][exp.c].color = null;
                 }
 
+                renderBoard();
+                updateScoreboard();
+
+                // Wait precisely 300ms while translation slides execute visually across layout boundaries
+                await new Promise(resolve => setTimeout(resolve, 300));
+
+                // STAGE 2: Projectiles strike destinations. Distribute math packets cleanly
                 for (let exp of readyToExpand) {
                     const neighbors = [
                         { r: exp.r - 1, c: exp.c }, { r: exp.r + 1, c: exp.c }, 
@@ -875,9 +1028,10 @@
                 if (!isTutorialMode) checkWinCondition();
                 if (winner) { isExpanding = false; break; }
 
-                await new Promise(resolve => setTimeout(resolve, 350));
+                await new Promise(resolve => setTimeout(resolve, 140));
             }
 
+            boardContainer.classList.remove('shake-active');
             isAnimating = false;
             renderBoard();
         }
@@ -910,8 +1064,15 @@
                 setTimeout(async () => {
                     isAnimating = true;
                     playSound('collapse', 2);
+                    
+                    document.getElementById('board').classList.add('shake-active');
+                    triggerFlyingParticles(tbR, tbC, 'neutral');
+
                     board[tbR][tbC].dots = 0;
                     board[tbR][tbC].color = 'neutral';
+                    renderBoard();
+
+                    await new Promise(resolve => setTimeout(resolve, 300));
 
                     const neighbors = [
                         { r: tbR - 1, c: tbC }, { r: tbR + 1, c: tbC },
@@ -926,6 +1087,11 @@
                             }
                         }
                     }
+                    
+                    setTimeout(() => {
+                        document.getElementById('board').classList.remove('shake-active');
+                    }, 150);
+
                     isAnimating = false;
                     renderBoard();
                     updateScoreboard();
